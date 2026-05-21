@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { stripe } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe";
 import { createClient } from "@supabase/supabase-js";
 import Stripe from "stripe";
 
@@ -8,18 +8,19 @@ export async function POST(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
+
   const body = await request.text();
   const signature = request.headers.get("stripe-signature")!;
 
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(
+    event = getStripe().webhooks.constructEvent(
       body,
       signature,
       process.env.STRIPE_WEBHOOK_SECRET!
     );
-  } catch (e) {
+  } catch {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
@@ -38,7 +39,7 @@ export async function POST(request: NextRequest) {
 
         await supabase.from("subscriptions").upsert({
           user_id: userId,
-          stripe_subscription_id: session.subscription as string || null,
+          stripe_subscription_id: (session.subscription as string) || null,
           stripe_price_id: session.metadata?.plan_id || null,
           status: "active",
           tier,
@@ -74,7 +75,9 @@ export async function POST(request: NextRequest) {
           .update({
             status: subscription.status,
             tier,
-            current_period_end: new Date((subscription as unknown as { current_period_end: number }).current_period_end * 1000).toISOString(),
+            current_period_end: new Date(
+              (subscription as unknown as { current_period_end: number }).current_period_end * 1000
+            ).toISOString(),
             updated_at: new Date().toISOString(),
           })
           .eq("user_id", profile.user_id);
@@ -108,4 +111,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Webhook processing failed" }, { status: 500 });
   }
 }
-

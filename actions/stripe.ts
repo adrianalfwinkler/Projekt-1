@@ -1,6 +1,6 @@
 "use server";
 import { createClient } from "@/lib/supabase/server";
-import { stripe, STRIPE_PLANS } from "@/lib/stripe";
+import { getStripe, STRIPE_PLANS } from "@/lib/stripe";
 import { redirect } from "next/navigation";
 
 export async function createCheckoutSession(planId: string) {
@@ -13,7 +13,8 @@ export async function createCheckoutSession(planId: string) {
   if (!plan) return { error: "Invalid plan" };
 
   try {
-    // Get or create Stripe customer
+    const stripe = getStripe();
+
     const { data: profile } = await supabase
       .from("profiles")
       .select("stripe_customer_id, email, full_name")
@@ -41,19 +42,11 @@ export async function createCheckoutSession(planId: string) {
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ["card"],
-      line_items: [
-        {
-          price: plan.priceId,
-          quantity: 1,
-        },
-      ],
+      line_items: [{ price: plan.priceId, quantity: 1 }],
       mode: isSubscription ? "subscription" : "payment",
       success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?success=true`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/pricing?canceled=true`,
-      metadata: {
-        user_id: user.id,
-        plan_id: planId,
-      },
+      metadata: { user_id: user.id, plan_id: planId },
       allow_promotion_codes: true,
     });
 
@@ -81,7 +74,7 @@ export async function createPortalSession() {
   }
 
   try {
-    const session = await stripe.billingPortal.sessions.create({
+    const session = await getStripe().billingPortal.sessions.create({
       customer: profile.stripe_customer_id,
       return_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
     });
