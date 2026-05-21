@@ -1,9 +1,17 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { AnalysisResult, OnboardingData } from "@/types";
 
-export const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY!,
-});
+let _anthropic: Anthropic | null = null;
+
+function getAnthropic(): Anthropic {
+  if (!_anthropic) {
+    if (!process.env.ANTHROPIC_API_KEY) {
+      throw new Error("ANTHROPIC_API_KEY is not configured");
+    }
+    _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  }
+  return _anthropic;
+}
 
 export async function generateBusinessAnalysis(
   data: OnboardingData
@@ -76,7 +84,7 @@ Requirements:
 - Focus on ideas achievable with the given budget and time constraints
 - Return ONLY the JSON object, no additional text`;
 
-  const message = await anthropic.messages.create({
+  const message = await getAnthropic().messages.create({
     model: "claude-sonnet-4-6",
     max_tokens: 4096,
     messages: [
