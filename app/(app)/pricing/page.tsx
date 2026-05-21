@@ -1,5 +1,5 @@
 import { PricingPage } from "@/components/pricing/pricing-page";
-import { createClient } from "@/lib/supabase/server";
+import { getUser, createClient } from "@/lib/supabase/server";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -8,17 +8,19 @@ export const metadata: Metadata = {
 };
 
 export default async function PricingRoute() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getUser();
 
   let tier = "free";
   if (user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("subscription_tier")
-      .eq("user_id", user.id)
-      .single();
-    tier = profile?.subscription_tier || "free";
+    try {
+      const supabase = await createClient();
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("subscription_tier")
+        .eq("user_id", user.id)
+        .single();
+      tier = profile?.subscription_tier || "free";
+    } catch {}
   }
 
   return <PricingPage currentTier={tier} isLoggedIn={!!user} />;
