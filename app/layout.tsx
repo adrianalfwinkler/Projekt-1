@@ -4,6 +4,10 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { PostHogProvider } from "@/components/posthog-provider";
+import { validateEnv } from "@/lib/env";
+
+// Validate env vars at module init time — fails fast instead of serving broken pages
+validateEnv();
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
