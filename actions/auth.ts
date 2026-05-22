@@ -50,6 +50,16 @@ export async function signUp(
     }
 
     if (authData.user) {
+      // Create profile row (replaces the database trigger)
+      const { error: profileError } = await supabase.from("profiles").insert({
+        user_id: authData.user.id,
+        email: raw.email,
+        full_name: raw.fullName,
+      });
+      if (profileError) {
+        console.error("[auth] Profile creation failed:", profileError.message);
+      }
+
       sendWelcomeEmail(raw.email, raw.fullName).catch((e) =>
         console.warn("[auth] Welcome email failed (non-critical):", e)
       );
